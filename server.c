@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+    #define BACKLOG 10
+
 void /*idk what this should return yet*/ readFile();
 int authenticate();
 int updateLeaderboard(int score, char* name);
@@ -17,16 +19,16 @@ int main (int argc, char* argv[]) {
     int sockfd, new_fd;
     struct sockaddr_in my_addr;
     struct sockaddr_in their_addr;
-    socklen_t sin_sizel
+    socklen_t sin_size;
     int i = 0;
 
     //get port number
     if (argc != 2) {
-        fprintf(stderr, "Please specify client port number");
+        fprintf(stderr, "Please specify client port number\n"); //configure so we have a default port
         exit(1);
     }
 
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0) == -1)) {
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         exit(1);
     }
@@ -37,7 +39,7 @@ int main (int argc, char* argv[]) {
     my_addr.sin_addr.s_addr = INADDR_ANY;
 
     //bind socket to endpoint
-    if (bind(sockfd, struct sockaddr *)&my_addr, sizeof(struct sockaddr) == -1) {
+    if (bind(sockfd, (struct sockaddr*)&my_addr, sizeof(struct sockaddr)) == -1) {
         perror("bind");
         exit(1);
     }
@@ -46,6 +48,12 @@ int main (int argc, char* argv[]) {
     if (listen(sockfd, BACKLOG) == -1) {
         perror("listen");
         exit(1);
+    }
+
+    printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
+
+    while(1) {
+        
     }
 
     //variable = readFile();
