@@ -23,6 +23,8 @@ int main (int argc, char* argv[]) {
     socklen_t sin_size;
     int i = 0;
 
+    char send_data[1024], recv[1024];
+
     //get port number
     if (argc != 2) {
         fprintf(stderr, "Please specify client port number\n"); //configure so we have a default port
@@ -30,7 +32,7 @@ int main (int argc, char* argv[]) {
     }
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket\n");
+        perror("socket");
         exit(1);
     }
 
@@ -41,25 +43,38 @@ int main (int argc, char* argv[]) {
 
     //bind socket to endpoint
     if (bind(sockfd, (struct sockaddr*)&my_addr, sizeof(struct sockaddr)) == -1) {
-        perror("bind\n");
+        perror("bind");
         exit(1);
     }
 
     //listen
     if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen\n");
+        perror("listen");
         exit(1);
     }
 
     printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 
     while(1) {
+        
+        int state = 0;
+
         sin_size = sizeof(struct sockaddr_in);
         if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
-            perror("accept\n");
+            perror("accept");
             continue;
         }
-        printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
+        
+        //main menu block 
+        while (1) {
+            char *message = "\n=======WASSUPPP======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n";
+            if (send(new_fd, message, sizeof((char*)message) ,0) == -1) {
+                perror("send");
+            }
+        
+
+        }
+
     }
 
     //variable = readFile();

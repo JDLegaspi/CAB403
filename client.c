@@ -47,8 +47,10 @@ int main (int argc, char* argv[]) {
         perror("connect\n");
         exit(1);
     } else {
-        printf("wassup foo\n");
+        printf("Connected!");
     }
+
+    
     
     return 0;
 }
