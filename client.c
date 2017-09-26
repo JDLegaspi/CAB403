@@ -3,12 +3,13 @@
 #include <errno.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#DEFINE MAXDATASIZE 100
+    #define MAXDATASIZE 100
 
 int main (int argc, char* argv[]) {
 
@@ -19,19 +20,19 @@ int main (int argc, char* argv[]) {
 
     //make sure all inputs are satisfied
     if (argc != 3) {
-        fprintf(stderr, "usage: client_hostname port_number");
+        fprintf(stderr, "usage: client_hostname port_number\n");
         exit(1);
     }
 
     //get hostname from first input
     if ((he = gethostbyname(argv[1])) == NULL) {
-        herror("gethostbyname");
+        herror("gethostbyname\n");
         exit(1);
     }
 
     //generate socket and ensure no error
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket");
+        perror("socket\n");
         exit(1);
     }
 
@@ -43,8 +44,10 @@ int main (int argc, char* argv[]) {
 
     //connect to ip and socket specified
     if (connect(sockfd, (struct sockaddr* )&their_address, sizeof(struct sockaddr)) == -1) {
-        perror("connect");
+        perror("connect\n");
         exit(1);
+    } else {
+        printf("wassup foo\n");
     }
     
     return 0;

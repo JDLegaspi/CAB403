@@ -4,6 +4,7 @@
 #include <string.h>
 #include <netinet/in.h>
 
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -29,7 +30,7 @@ int main (int argc, char* argv[]) {
     }
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket");
+        perror("socket\n");
         exit(1);
     }
 
@@ -40,20 +41,25 @@ int main (int argc, char* argv[]) {
 
     //bind socket to endpoint
     if (bind(sockfd, (struct sockaddr*)&my_addr, sizeof(struct sockaddr)) == -1) {
-        perror("bind");
+        perror("bind\n");
         exit(1);
     }
 
     //listen
     if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen");
+        perror("listen\n");
         exit(1);
     }
 
     printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 
     while(1) {
-        
+        sin_size = sizeof(struct sockaddr_in);
+        if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
+            perror("accept\n");
+            continue;
+        }
+        printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
     }
 
     //variable = readFile();
