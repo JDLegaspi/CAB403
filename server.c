@@ -3,20 +3,23 @@
 #include <errno.h>
 #include <string.h>
 #include <netinet/in.h>
-
+#include <time.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-    #define BACKLOG 10
+#define BACKLOG 10
+#define BUF_SIZE ( 256 )
 
-void /*idk what this should return yet*/ readFile();
+char *readFile();
 int authenticate();
 int updateLeaderboard(int score, char* name);
 
+
 int main (int argc, char* argv[]) {
 
+    srand(time(NULL));
     int sockfd, new_fd;
     struct sockaddr_in my_addr;
     struct sockaddr_in their_addr;
@@ -53,7 +56,12 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
+		
+
     printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
+	
+	char *test = readFile(); //Testing readFile
+	printf("%s",test);
 
     while(1) {
         
@@ -79,11 +87,34 @@ int main (int argc, char* argv[]) {
 
     //variable = readFile();
 
+	
     return 0;
 }
 
-void /*idk what this should return yet*/ readFile() {
+char *readFile(){
+	int lineNumber;// = 285; //change to random
+	static const char filename[] = "hangman_text.txt";
+	FILE *file = fopen(filename, "r");
+	int count = 1;
+	char line[288];
+	char *guessWord;
+	lineNumber = rand() % 289;
 
+	while(fgets(line, sizeof(line), file) != NULL){
+
+		
+		if(lineNumber == count){
+			guessWord = line;
+			count++;
+			fclose(file);
+			return guessWord;			
+		}
+		else{
+			count++;		
+		}
+
+	}
+	//had return guessWord down here but returns different value
 }
 
 int authenticate() {
