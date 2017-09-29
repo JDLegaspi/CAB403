@@ -15,6 +15,7 @@
 char *readFile();
 int authenticate();
 int updateLeaderboard(int score, char* name);
+void game(char* wordOne, char* wordTwo);
 
 
 int main (int argc, char* argv[]) {
@@ -56,12 +57,36 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-		
+	char *test = readFile(); 
+	//printf("%s", test); //Testing readFile
+
+	//Code to separate words
+	char *p;
+	char *wordOne;
+	char *wordTwo;
+
+	p= strtok(test, ",");
+
+	if(p){
+		wordOne = p;		
+	}
+	p = strtok(NULL, ",");
+	
+	if(p){
+		wordTwo = p;	
+	} // won't work in the game function otherwise segmentation dump
+
+	//printf("%s\n", wordOne);//Test word separation
+	//printf("%s", wordTwo);	
+
+	game(wordOne, wordTwo); //testing game function
+
+	
+
 
     printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 	
-	char *test = readFile(); //Testing readFile
-	printf("%s",test);
+	
 
     while(1) {
         
@@ -119,6 +144,53 @@ char *readFile(){
 
 int authenticate() {
 
+}
+
+void game(char* wordOne, char* wordTwo) {
+	
+	
+	char guess = 'a'; //tester variable
+	int guessesNo = strlen(wordOne) +strlen(wordTwo) + 9;
+	if( guessesNo < 26){	
+	}
+	else{
+		guessesNo = 26;	
+	}
+
+
+	//printf("%d\n", guessesNo); //test number of guesses
+
+	/*for(int i = 0; wordOne[i] != '\0'; i++){
+		
+		printf("Check: %c", wordOne[i]);
+		printf("Guess: %c\n", guess);
+
+		if(wordOne[i] == guess){
+			printf("%c ASDASF\n", guess);
+		}
+		else{
+			printf("%c was Incorrect\n", guess);
+		}
+	}/* Doesnt work yet
+			
+
+
+	
+	/*char *p;
+	char *wordOne;
+	char *wordTwo;
+
+	p= strtok(guessWords, ",");
+
+	if(p){
+		wordOne = p;		
+	}
+	p = strtok(NULL, ",");
+	
+	if(p){
+		wordTwo = p;	
+	}
+	return wordOne;*/
 }
 
 int updateLeaderboard(int score, char* name) {
