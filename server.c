@@ -109,14 +109,16 @@ int main (int argc, char* argv[]) {
             continue;
         }
 
+		char *message;
+		int userLine;
+
 		//authenticate block
 		int auth = 1;
 		while(auth) {
 
 			memset(recv_data, 0, sizeof(recv_data));
-			int userLine;
 
-			char *message = "enter username: ";
+			message = "enter username: ";
 			if (send(new_fd, message, strlen(message) ,0) == -1) {
 				perror("send");
 				exit(1);
@@ -125,14 +127,14 @@ int main (int argc, char* argv[]) {
 			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
 			
 			// auth username
-			if (userLine = authenticateUser(recv_data) == 0) {
-				char *message = "username does not match";
+			if ((userLine = authenticateUser(recv_data)) == 0) {
+				message = "username does not match\n";
 				if (send(new_fd, message, strlen(message) ,0) == -1) {
 					perror("send");
 				}
 			} else {
 				memset(recv_data, 0, sizeof(recv_data));
-				char *message = "enter password: ";
+				message = "enter password: ";
 				if (send(new_fd, message, strlen(message) ,0) == -1) {
 					perror("send");
 					exit(1);
@@ -140,20 +142,44 @@ int main (int argc, char* argv[]) {
 
 				bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
 
-				if (authenticatePass(recv_data, userLine)) {
-					
+				if (authenticatePass(recv_data, userLine) == 1) {
+					auth = 0;
 				} else {
-					char *message = "password does not match";
+					message = "password does not match\n";
 					if (send(new_fd, message, strlen(message) ,0) == -1) {
 						perror("send");
 					}
 				}
-
 			}
 		}
 
+		memset(recv_data, 0, sizeof(recv_data));
+
 		//main menu block 
-        //char *message = "\n=======WASSUPPP======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n";
+		int choice = 0;
+		while (choice == 0) {
+			message = "\n=======WASSUPPP======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
+			if (send(new_fd, message, strlen(message) ,0) == -1) {
+				perror("send");
+			}
+
+			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
+
+			if (strcmp(recv_data, "1") == 0) {
+				choice = 1;
+			} else if (strcmp(recv_data, "2") == 0) {
+				choice = 2;
+			} else if (strcmp(recv_data, "3") == 0) {
+				choice = 3;
+			} else {
+				message = "Please enter 1, 2, or 3 as a selection.\n";
+				if (send(new_fd, message, strlen(message) ,0) == -1) {
+					perror("send");
+				}
+			}
+		}
+
+		printf("Choice: %d\n", choice);
 
     }
 
@@ -199,7 +225,7 @@ int authenticateUser(char* input) {
 
 	int inputLength = strlen(input);
 	char substring[inputLength];
-	int lineNumber, lineMatch = 0;
+	static int lineNumber, lineMatch = 0;
 
 	while((read = getline(&line, &len, file)) != -1) {
 		strncpy(substring, line, inputLength);
@@ -218,6 +244,43 @@ int authenticateUser(char* input) {
 }
 
 int authenticatePass(char* input, int lineNo) {
+
+	static const char* filename = "authentication.txt";
+	FILE *file = fopen(filename, "r");
+
+	//int inputLength = strlen(input);
+	int inputLength = 6;
+	char* substring;
+	int lineNumber, passMatch = 0;
+	
+	char* line = NULL;
+	size_t len = 0;
+	ssize_t read;
+
+	while((read = getline(&line, &len, file)) != -1) {
+
+		printf("lineNo: %d	currentLine: %d\n", lineNo, lineNumber);
+
+		if (lineNumber == lineNo) {	
+			if (line[strlen(line) - 1] == '\n') {
+				substring = &line[strlen(line) - inputLength - 1];
+				substring[strlen(substring) - 1] = '\0';
+			} else {
+				substring = &line[strlen(line) - inputLength];
+			}
+
+			printf("entered: %s	password: %s\n", input, substring);
+
+			if (strcmp(substring, input) == 0) {
+				passMatch = 1;
+				break;
+			}
+		} else {
+			lineNumber++;
+		}
+	}
+
+	return passMatch;
 
 }
 
