@@ -4,12 +4,12 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-    #define MAXDATASIZE 100
+    #define MAXDATASIZE 1024
 
 int main (int argc, char* argv[]) {
 
@@ -17,6 +17,9 @@ int main (int argc, char* argv[]) {
     char buf[MAXDATASIZE];
     struct hostent* he;
     struct sockaddr_in their_address;
+
+    int bytes_received;
+    char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 
     //make sure all inputs are satisfied
     if (argc != 3) {
@@ -46,11 +49,21 @@ int main (int argc, char* argv[]) {
     if (connect(sockfd, (struct sockaddr* )&their_address, sizeof(struct sockaddr)) == -1) {
         perror("connect\n");
         exit(1);
-    } else {
-        printf("Connected!");
     }
 
+    while(1) {
+        bytes_received = recv(sockfd, recv_data, sizeof(recv_data), 0);
+        recv_data[bytes_received] = '\0';
     
+        printf("%s", recv_data);
+
+        scanf("%s", send_data);
+        
+        if(send(sockfd, send_data, strlen(send_data), 0) == -1) {
+            perror("send\n");
+            exit(1);
+        }
+    }
     
     return 0;
 }
