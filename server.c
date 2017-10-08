@@ -8,15 +8,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <ctype.h>
 
-#define BACKLOG 10
-#define BUF_SIZE ( 256 )
+	#define BACKLOG 10
+	#define BUF_SIZE ( 256 )
+	#define MAXDATASIZE 1024
 
 char *readFile();
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
 int updateLeaderboard(int score, char* name);
-void game(char* wordOne, char* wordTwo);
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, char* message);
 
 
 int main (int argc, char* argv[]) {
@@ -29,7 +31,7 @@ int main (int argc, char* argv[]) {
     int bytes_received, i = 0;
 
 
-    char send_data[1024], recv_data[1024];
+    char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 
     //get port number
     if (argc != 2) {
@@ -67,34 +69,7 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-	char *test = readFile(); 
-	//printf("%s", test); //Testing readFile
-
-	//Code to separate words
-	char *p;
-	char *wordOne;
-	char *wordTwo;
-
-	p= strtok(test, ",");
-
-	if(p){
-		wordOne = p;		
-	}
-	p = strtok(NULL, ",");
-	
-	if(p){
-		wordTwo = p;	
-	} // won't work in the game function otherwise segmentation dump
-
-	//printf("%s\n", wordOne);//Test word separation
-	//printf("%s", wordTwo);	
-
-	game(wordOne, wordTwo); //testing game function
-
-	
-
-
-    printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
+	printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 	
 	
 	//main block
@@ -179,7 +154,51 @@ int main (int argc, char* argv[]) {
 			}
 		}
 
-		printf("Choice: %d\n", choice);
+		if (choice == 1) {
+			//game block
+
+			char *test = readFile();
+			test[strlen(test)] = '\0';
+			printf("%s", test); //Testing readFile
+		
+			// //Code to separate words
+			char *p;
+			char *wordOne;
+			char *wordTwo;
+		
+			p = strtok(test, ",");
+		
+			if (p) {
+				wordOne = p;		
+			}
+			
+			p = strtok(NULL, ",");
+			
+			if (p) {
+				wordTwo = p;
+			} // won't work in the game function otherwise segmentation dump	
+
+			// int j = 0;
+			// while ((p = strsep(&test, ",")) != NULL) {
+			// 	if (j = 0) {
+			// 		printf("%s\n", p);
+			// 		wordOne = strdup(p);
+			// 	} else {
+			// 		printf("%s\n", p);
+			// 		wordTwo = strdup(p);
+			// 	}
+			// 	j++;
+			// }
+
+			printf("%s, %s\n", wordOne, wordTwo);
+		
+			// game(wordOne, wordTwo, &new_fd, send_data, recv_data, message); //testing game function
+
+		} else if (choice == 2) {
+			//leaderboard block
+		} else {
+			//gracefully exit
+		}
 
     }
 
@@ -284,16 +303,78 @@ int authenticatePass(char* input, int lineNo) {
 
 }
 
-void game(char* wordOne, char* wordTwo) {
-	
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, char* message) {
 	
 	char guess = 'a'; //tester variable
-	int guessesNo = strlen(wordOne) +strlen(wordTwo) + 9;
-	if( guessesNo < 26){	
-	}
-	else{
-		guessesNo = 26;	
-	}
+	char* board;
+	char* combinedWords;
+	int bytes_received, i;
+	char* guessesMadeStr = "Guesses Made: ";
+
+	// int wordOneLen = strlen(wordOne);
+	// int wordTwoLen = strlen(wordTwo);
+
+	// int guessesNo = wordOneLen + wordTwoLen + 9;
+	// if( guessesNo < 26){
+	// }
+	// else{
+	// 	guessesNo = 26;	
+	// }
+
+	// board = malloc(wordOneLen + wordTwoLen + 3);
+	// combinedWords = malloc(wordOneLen + wordTwoLen + 2);
+
+	// //combine words
+	// combinedWords[0] = '\0';
+	// strcat(combinedWords, wordOne);
+	// strcat(combinedWords, " ");
+	// strcat(combinedWords, wordTwo);
+
+	// //create guesses UI
+	// int j = 0;
+	// while (board[j] != '\0') {
+	// 	if (!(&board[j] == " " || &board[j] == "\n")) {
+	// 		putchar('_');
+	// 	}
+	// }
+
+	//game status - 1 = playing, 2 = loss, 3 = win, 4 = quit(?)
+	// int gameStatus = 1;
+	// while (gameStatus == 1) {
+
+	// 	if (guessesNo <= 0) {
+	// 		//exit game
+	// 	}
+
+	// 	sprintf(message, "\nGuesses Left: %d\n", guessesNo);
+		
+	// 	if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1) {
+	// 		perror("send");
+	// 	}
+
+	// 	if (send(*new_fd, board, strlen(board), 0) == -1) {
+	// 		perror("send");
+	// 	}
+
+	// 	bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+
+	// 	if (isalpha(recv_data) || strlen(recv_data) == 1) { //also find a way to check if input is uppercase
+	// 		for (i = 0; i < strlen(combinedWords); i++) {
+	// 			if (strcmp(recv_data, &combinedWords[i]) == 0) {
+	// 				board[i + 1] = combinedWords[i];
+	// 			}
+	// 		}
+	// 		guessesNo--;
+	// 	} else {
+	// 		message = "Not a valid input. Please enter a lower-case letter\n";
+	// 		if (send(*new_fd, message, strlen(message), 0) == -1) {
+	// 			perror("send");
+	// 		}
+	
+	// 		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+	// 	}
+
+	// }
 
 
 	//printf("%d\n", guessesNo); //test number of guesses
@@ -310,9 +391,6 @@ void game(char* wordOne, char* wordTwo) {
 			printf("%c was Incorrect\n", guess);
 		}
 	}/* Doesnt work yet
-			
-
-
 	
 	/*char *p;
 	char *wordOne;
