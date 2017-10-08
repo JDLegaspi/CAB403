@@ -166,33 +166,24 @@ int main (int argc, char* argv[]) {
 			char *wordOne;
 			char *wordTwo;
 		
-			p = strtok(test, ",");
+			// p = strtok(test, ",");
 		
-			if (p) {
-				wordOne = p;		
-			}
-			
-			p = strtok(NULL, ",");
-			
-			if (p) {
-				wordTwo = p;
-			} // won't work in the game function otherwise segmentation dump	
-
-			// int j = 0;
-			// while ((p = strsep(&test, ",")) != NULL) {
-			// 	if (j = 0) {
-			// 		printf("%s\n", p);
-			// 		wordOne = strdup(p);
-			// 	} else {
-			// 		printf("%s\n", p);
-			// 		wordTwo = strdup(p);
-			// 	}
-			// 	j++;
+			// if (p) {
+			// 	wordOne = p;		
 			// }
+			
+			// p = strtok(NULL, ",");
+			
+			// if (p) {
+			// 	wordTwo = p;
+			// } // won't work in the game function otherwise segmentation dump	
 
-			printf("%s, %s\n", wordOne, wordTwo);
+			//printf("%s, %s\n", wordOne, wordTwo);
 		
-			// game(wordOne, wordTwo, &new_fd, send_data, recv_data, message); //testing game function
+			wordOne = "hello";
+			wordTwo = "sir";
+
+			//game(wordOne, wordTwo, &new_fd, send_data, recv_data, message); //testing game function
 
 		} else if (choice == 2) {
 			//leaderboard block
@@ -311,35 +302,37 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	int bytes_received, i;
 	char* guessesMadeStr = "Guesses Made: ";
 
-	// int wordOneLen = strlen(wordOne);
-	// int wordTwoLen = strlen(wordTwo);
+	int wordOneLen = strlen(wordOne);
+	int wordTwoLen = strlen(wordTwo);
+	int guessesNo = wordOneLen + wordTwoLen + 9;
+	if( guessesNo < 26){
+	}
+	else{
+		guessesNo = 26;	
+	}
 
-	// int guessesNo = wordOneLen + wordTwoLen + 9;
-	// if( guessesNo < 26){
-	// }
-	// else{
-	// 	guessesNo = 26;	
-	// }
+	board = malloc(wordOneLen + wordTwoLen + 3);
+	combinedWords = malloc(wordOneLen + wordTwoLen + 2);
 
-	// board = malloc(wordOneLen + wordTwoLen + 3);
-	// combinedWords = malloc(wordOneLen + wordTwoLen + 2);
+	//combine words
+	combinedWords[0] = '\0';
+	strcat(combinedWords, wordOne);
+	strcat(combinedWords, " ");
+	strcat(combinedWords, wordTwo);
 
-	// //combine words
-	// combinedWords[0] = '\0';
-	// strcat(combinedWords, wordOne);
-	// strcat(combinedWords, " ");
-	// strcat(combinedWords, wordTwo);
+	//create guesses UI <---------------------------------NEED TO FIX THIS
+	int j = 0;
+	//board[wordOneLen + wordTwoLen + 3] = '\0';
+	board[0] = '\n';
+	while (board[j] != '\0') {
+		if (!(&board[j] == " " || &board[j] == "\n")) {
+			putchar('_');
+		}
+	}
 
-	// //create guesses UI
-	// int j = 0;
-	// while (board[j] != '\0') {
-	// 	if (!(&board[j] == " " || &board[j] == "\n")) {
-	// 		putchar('_');
-	// 	}
-	// }
+	printf("%s\n", combinedWords);
 
-	//game status - 1 = playing, 2 = loss, 3 = win, 4 = quit(?)
-	// int gameStatus = 1;
+	int gameStatus = 1;
 	// while (gameStatus == 1) {
 
 	// 	if (guessesNo <= 0) {
