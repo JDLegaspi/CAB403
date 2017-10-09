@@ -18,7 +18,7 @@ char *readFile();
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
 int updateLeaderboard(int score, char* name);
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, char* message);
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data);
 
 
 int main (int argc, char* argv[]) {
@@ -28,7 +28,7 @@ int main (int argc, char* argv[]) {
     struct sockaddr_in my_addr;
     struct sockaddr_in their_addr;
     socklen_t sin_size;
-    int bytes_received, i = 0;
+    int bytes_received;
 
 
     char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
@@ -75,8 +75,6 @@ int main (int argc, char* argv[]) {
 	//main block
     while(1) {
         
-        int state = 0;
-
         sin_size = sizeof(struct sockaddr_in);
 		
 		if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
@@ -128,8 +126,6 @@ int main (int argc, char* argv[]) {
 			}
 		}
 
-		memset(recv_data, 0, sizeof(recv_data));
-
 		//main menu block 
 		int choice = 0;
 		while (choice == 0) {
@@ -137,6 +133,8 @@ int main (int argc, char* argv[]) {
 			if (send(new_fd, message, strlen(message) ,0) == -1) {
 				perror("send");
 			}
+
+			memset(recv_data, 0, sizeof(recv_data));
 
 			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
 
@@ -162,7 +160,7 @@ int main (int argc, char* argv[]) {
 			printf("%s", test); //Testing readFile
 		
 			// //Code to separate words
-			char *p;
+			//char *p;
 			char *wordOne;
 			char *wordTwo;
 		
@@ -183,7 +181,7 @@ int main (int argc, char* argv[]) {
 			wordOne = "hello";
 			wordTwo = "sir";
 
-			//game(wordOne, wordTwo, &new_fd, send_data, recv_data, message); //testing game function
+			game(wordOne, wordTwo, &new_fd, send_data, recv_data); //testing game function
 
 		} else if (choice == 2) {
 			//leaderboard block
@@ -269,8 +267,6 @@ int authenticatePass(char* input, int lineNo) {
 
 	while((read = getline(&line, &len, file)) != -1) {
 
-		printf("lineNo: %d	currentLine: %d\n", lineNo, lineNumber);
-
 		if (lineNumber == lineNo) {	
 			if (line[strlen(line) - 1] == '\n') {
 				substring = &line[strlen(line) - inputLength - 1];
@@ -294,12 +290,13 @@ int authenticatePass(char* input, int lineNo) {
 
 }
 
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, char* message) {
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data) {
 	
-	char guess = 'a'; //tester variable
 	char* board;
 	char* combinedWords;
-	int bytes_received, i;
+	char* statusMessage;
+	int bytes_received, i, j, totalChars, charsCorrect;
+	char message[1048];
 	char* guessesMadeStr = "Guesses Made: ";
 
 	int wordOneLen = strlen(wordOne);
@@ -320,86 +317,73 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	strcat(combinedWords, " ");
 	strcat(combinedWords, wordTwo);
 
-	//create guesses UI <---------------------------------NEED TO FIX THIS
-	int j = 0;
-	//board[wordOneLen + wordTwoLen + 3] = '\0';
-	board[0] = '\n';
-	while (board[j] != '\0') {
-		if (!(&board[j] == " " || &board[j] == "\n")) {
-			putchar('_');
-		}
-	}
-
 	printf("%s\n", combinedWords);
 
+	//create guesses UI
+	board[0] = '\0';
+	for (j = 0; j < wordOneLen + 1; j++) {
+		if (j == 0) {
+			strcat(board, "\n");
+		} else {
+			strcat(board, "_");
+		}
+	}
+	strcat(board, " ");
+	for (j = 0; j < wordTwoLen; j++) {
+		strcat(board, "_");
+	}
+
+	totalChars = wordOneLen + wordTwoLen;
+	charsCorrect = 0;
+
+	//1 = playing, 2 = lose, 3 = win
 	int gameStatus = 1;
-	// while (gameStatus == 1) {
+	while (gameStatus == 1) {
 
-	// 	if (guessesNo <= 0) {
-	// 		//exit game
-	// 	}
+		snprintf(message, sizeof message, "\nGuesses Left: %d\n", guessesNo);
 
-	// 	sprintf(message, "\nGuesses Left: %d\n", guessesNo);
-		
-	// 	if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1) {
-	// 		perror("send");
-	// 	}
-
-	// 	if (send(*new_fd, board, strlen(board), 0) == -1) {
-	// 		perror("send");
-	// 	}
-
-	// 	bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
-
-	// 	if (isalpha(recv_data) || strlen(recv_data) == 1) { //also find a way to check if input is uppercase
-	// 		for (i = 0; i < strlen(combinedWords); i++) {
-	// 			if (strcmp(recv_data, &combinedWords[i]) == 0) {
-	// 				board[i + 1] = combinedWords[i];
-	// 			}
-	// 		}
-	// 		guessesNo--;
-	// 	} else {
-	// 		message = "Not a valid input. Please enter a lower-case letter\n";
-	// 		if (send(*new_fd, message, strlen(message), 0) == -1) {
-	// 			perror("send");
-	// 		}
-	
-	// 		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
-	// 	}
-
-	// }
-
-
-	//printf("%d\n", guessesNo); //test number of guesses
-
-	/*for(int i = 0; wordOne[i] != '\0'; i++){
-		
-		printf("Check: %c", wordOne[i]);
-		printf("Guess: %c\n", guess);
-
-		if(wordOne[i] == guess){
-			printf("%c ASDASF\n", guess);
+		if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1 || send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1) {
+			perror("send");
 		}
-		else{
-			printf("%c was Incorrect\n", guess);
+
+		memset(recv_data, 0, sizeof(recv_data));
+		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+
+		printf("Guess made: %s\n", recv_data);
+
+		if (isalpha(recv_data[0]) && strlen(recv_data) == 1) {
+			for (i = 0; i < strlen(combinedWords); i++) {
+				if (recv_data[0] == combinedWords[i]) {
+					charsCorrect++;				
+					printf("Match!\n");
+					board[i + 1] = combinedWords[i];
+				}
+			}
+			guessesNo--;
+		
+		} else {
+			statusMessage = "Not a valid input. Please enter a lower-case letter\n";
+			if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
+				perror("send");
+			}
 		}
-	}/* Doesnt work yet
-	
-	/*char *p;
-	char *wordOne;
-	char *wordTwo;
 
-	p= strtok(guessWords, ",");
+		if (guessesNo <= 0) {
+			//exit game
+		}
+		if (charsCorrect == totalChars) {
+			gameStatus = 3;
+		}
 
-	if(p){
-		wordOne = p;		
 	}
-	p = strtok(NULL, ",");
-	
-	if(p){
-		wordTwo = p;	
+
+	//do stuff based on game status
+	if (gameStatus == 3) {
+		statusMessage = "Yay!\n";
+		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
+			perror("send");
+		}
 	}
-	return wordOne;*/
 }
 
 int updateLeaderboard(int score, char* name) {
