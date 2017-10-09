@@ -157,29 +157,30 @@ int main (int argc, char* argv[]) {
 
 			char *test = readFile();
 			test[strlen(test)] = '\0';
-			printf("%s", test); //Testing readFile
+			//printf("%s", test); //Testing readFile
 		
 			// //Code to separate words
-			//char *p;
+			char *p;
 			char *wordOne;
 			char *wordTwo;
 		
-			// p = strtok(test, ",");
+			 p = strtok(test, ",");
 		
-			// if (p) {
-			// 	wordOne = p;		
-			// }
+			 if (p) {
+			 	wordOne = p;		
+			 }
 			
-			// p = strtok(NULL, ",");
+			 p = strtok(NULL, ",");
 			
-			// if (p) {
-			// 	wordTwo = p;
-			// } // won't work in the game function otherwise segmentation dump	
+			 if (p) {
+				wordTwo = p;
+
+			} // won't work in the game function otherwise segmentation dump	
 
 			//printf("%s, %s\n", wordOne, wordTwo);
 		
-			wordOne = "hello";
-			wordTwo = "sir";
+			//wordOne = "hello";
+			//wordTwo = "sir";
 
 			game(wordOne, wordTwo, &new_fd, send_data, recv_data); //testing game function
 
@@ -192,7 +193,6 @@ int main (int argc, char* argv[]) {
     }
 
     //variable = readFile();
-
 	
     return 0;
 }
