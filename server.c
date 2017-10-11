@@ -17,7 +17,7 @@
 char *readFile();
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
-void printLeaderboard();
+void printLeaderboard(int* new_fd);
 void initilizeStruct(int line, char* player);
 void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
 
@@ -195,7 +195,7 @@ int main (int argc, char* argv[]) {
 
 		} else if (choice == 2) {
 			//leaderboard block
-			printLeaderboard();
+			printLeaderboard(&new_fd);
 		} else {
 			//gracefully exit
 		}
@@ -396,7 +396,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
 		}
-		//printLeaderboard();//using to test leaderboard
+		//printLeaderboard(new_fd);//using to test leaderboard
 			
 	}
 	if (gameStatus == 2) {
@@ -416,12 +416,13 @@ void initilizeStruct(int line, char* player){
 }
 
 
-void printLeaderboard() {
+void printLeaderboard(int* new_fd) {
 	struct scoreBoard test[12];
 	struct scoreBoard temp;
 	int swapped = 0;
 	int unsorted = 1;
-	char * message;
+	char message[1048];
+	
 		
 	for(int k = 0; k < 12; k++){
 		test[k] = u[k];
@@ -464,11 +465,20 @@ void printLeaderboard() {
 	}
 
 	}
-	//need to send all this to client
-	printf( "\n=========Leaderboard========="); 
+	
+	char * title = "\n=========Leaderboard=========";
+	if (send(*new_fd, title, strlen(title), 0) == -1){
+				perror("send");
+	}
+ 
 	for( int l = 0; l < 4; l++){
 		if(test[l].gamesPlayed > 0){
-		printf( "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================\n", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+		snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================\n", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+		
+		if (send(*new_fd, message, strlen(message), 0) == -1) {
+			perror("send");
+		}
+
 		}
 	}
 	
