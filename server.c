@@ -17,9 +17,15 @@
 char *readFile();
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
-int updateLeaderboard(int score, char* name);
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data);
+void printLeaderboard();
+void initilizeStruct(int line, char* player);
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
 
+struct scoreBoard {
+	char *player;
+	int gamesWon;
+	int gamesPlayed;
+}u[12];
 
 int main (int argc, char* argv[]) {
 
@@ -29,7 +35,8 @@ int main (int argc, char* argv[]) {
     struct sockaddr_in their_addr;
     socklen_t sin_size;
     int bytes_received;
-
+    char* name;
+    int userID;
 
     char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 
@@ -84,7 +91,6 @@ int main (int argc, char* argv[]) {
 
 		char *message;
 		int userLine;
-
 		//authenticate block
 		int auth = 1;
 		while(auth) {
@@ -98,7 +104,7 @@ int main (int argc, char* argv[]) {
 			}
 			
 			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
-			
+			name = recv_data; //need to grab name but this doesnt work
 			// auth username
 			if ((userLine = authenticateUser(recv_data)) == 0) {
 				message = "username does not match\n";
@@ -106,6 +112,7 @@ int main (int argc, char* argv[]) {
 					perror("send");
 				}
 			} else {
+				
 				memset(recv_data, 0, sizeof(recv_data));
 				message = "enter password: ";
 				if (send(new_fd, message, strlen(message) ,0) == -1) {
@@ -116,6 +123,8 @@ int main (int argc, char* argv[]) {
 				bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
 
 				if (authenticatePass(recv_data, userLine) == 1) {
+					userID = userLine - 1;	 
+					initilizeStruct(userID, name);		
 					auth = 0;
 				} else {
 					message = "password does not match\n";
@@ -182,10 +191,11 @@ int main (int argc, char* argv[]) {
 			//wordOne = "hello";
 			//wordTwo = "sir";
 
-			game(wordOne, wordTwo, &new_fd, send_data, recv_data); //testing game function
+			game(wordOne, wordTwo, &new_fd, send_data, recv_data, userID); //testing game function
 
 		} else if (choice == 2) {
 			//leaderboard block
+			printLeaderboard();
 		} else {
 			//gracefully exit
 		}
@@ -290,7 +300,7 @@ int authenticatePass(char* input, int lineNo) {
 
 }
 
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data) {
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID) {
 	
 	char* board;
 	char* combinedWords;
@@ -329,7 +339,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		}
 	}
 	strcat(board, " ");
-	for (j = 0; j < wordTwoLen; j++) {
+	for (j = 0; j < wordTwoLen; j++) { 
 		strcat(board, "_");
 	}
 
@@ -369,7 +379,8 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		}
 
 		if (guessesNo <= 0) {
-			//exit game
+			gameStatus = 2;
+			
 		}
 		if (charsCorrect == totalChars) {
 			gameStatus = 3;
@@ -379,15 +390,88 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 
 	//do stuff based on game status
 	if (gameStatus == 3) {
+		u[userID].gamesWon += 1;
+		u[userID].gamesPlayed++;		
 		statusMessage = "Yay!\n";
+		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
+			perror("send");
+		}
+		//printLeaderboard();//using to test leaderboard
+			
+	}
+	if (gameStatus == 2) {
+		u[userID].gamesPlayed++;		
+		statusMessage = "You Lose!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
 		}
 	}
 }
 
-int updateLeaderboard(int score, char* name) {
-    //check all scores - put current score in correct place
-    //maybe use a struct for name/score pairs
-    //maybe if scores are the same, place in alphabetical order
+
+void initilizeStruct(int line, char* player){
+	u[line].player = player;
+	u[line].gamesPlayed = 0;
+	u[line].gamesWon = 0;
 }
+
+
+void printLeaderboard() {
+	struct scoreBoard test[12];
+	struct scoreBoard temp;
+	int swapped = 0;
+	int unsorted = 1;
+	char * message;
+		
+	for(int k = 0; k < 12; k++){
+		test[k] = u[k];
+	}		
+
+	while(unsorted){
+	swapped = 0;
+	for( int j = 0; j < 3; j++){
+		
+		//order by wins, then percentage of wins, the alphabetically
+		if(test[j].gamesWon < test[j+1].gamesWon){
+			struct scoreBoard temp = test[j];
+			test[j] = test[j+1];
+			test[j+1] = temp;
+			swapped = 1;	
+		}
+		
+		else if(test[j].gamesWon == test[j+1].gamesWon){
+			float test1 = (float)test[j].gamesWon/(float)test[j].gamesPlayed;
+			float test2 = (float)test[j+1].gamesWon/(float)test[j+1].gamesPlayed;
+			if(test1 < test2){
+			temp = test[j];
+			test[j] = test[j+1];
+			test[j+1] = temp;
+			swapped = 1;
+		}
+		else if(test1 == test2){
+			if(strcmp(test[j].player, test[j+1].player)>0){
+			temp = test[j];
+			test[j] = test[j+1];
+			test[j+1] = temp;
+			swapped = 1;
+		}						
+	}
+		
+	}	
+		if(swapped == 0){
+		unsorted = 0;		
+		}		
+	}
+
+	}
+	//need to send all this to client
+	printf( "\n=========Leaderboard========="); 
+	for( int l = 0; l < 4; l++){
+		if(test[l].gamesPlayed > 0){
+		printf( "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================\n", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+		}
+	}
+	
+}
+
+
