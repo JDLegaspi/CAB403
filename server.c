@@ -20,6 +20,7 @@ int authenticatePass(char* input, int lineNo);
 void printLeaderboard(int* new_fd);
 void initilizeStruct(int line, char* player);
 void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
+int guessedAlready(char* guessedString, int charTwo);
 
 struct scoreBoard {
 	char *player;
@@ -165,7 +166,7 @@ int main (int argc, char* argv[]) {
 			//game block
 
 			char *test = readFile();
-			test[strlen(test)] = '\0';
+			//test[strlen(test)] = '\0';
 			//printf("%s", test); //Testing readFile
 		
 			// //Code to separate words
@@ -307,7 +308,9 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	char* statusMessage;
 	int bytes_received, i, j, totalChars, charsCorrect;
 	char message[1048];
-	char* guessesMadeStr = "Guesses Made: ";
+	char guessesMadeStr[100];
+	guessesMadeStr[0] = '\0';
+	char* guessesMadeMessage;
 
 	int wordOneLen = strlen(wordOne);
 	int wordTwoLen = strlen(wordTwo);
@@ -318,7 +321,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		guessesNo = 26;	
 	}
 
-	board = malloc(wordOneLen + wordTwoLen + 3);
+	board = malloc(wordOneLen + wordTwoLen + 2);
 	combinedWords = malloc(wordOneLen + wordTwoLen + 2);
 
 	//combine words
@@ -339,11 +342,11 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		}
 	}
 	strcat(board, " ");
-	for (j = 0; j < wordTwoLen; j++) { 
+	for (j = 0; j < wordTwoLen - 1; j++) { 
 		strcat(board, "_");
 	}
 
-	totalChars = wordOneLen + wordTwoLen;
+	totalChars = wordOneLen + wordTwoLen - 1;
 	charsCorrect = 0;
 
 	//1 = playing, 2 = lose, 3 = win
@@ -351,8 +354,9 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	while (gameStatus == 1) {
 
 		snprintf(message, sizeof message, "\nGuesses Left: %d\n", guessesNo);
+		guessesMadeMessage = "Guesses Made: ";
 
-		if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1 || send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1) {
+		if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeMessage, strlen(guessesMadeMessage), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1 || send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1 || send(*new_fd, "\nNew Guess: ", 13, 0) == -1) {
 			perror("send");
 		}
 
@@ -362,14 +366,26 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		printf("Guess made: %s\n", recv_data);
 
 		if (isalpha(recv_data[0]) && strlen(recv_data) == 1) {
+			
 			for (i = 0; i < strlen(combinedWords); i++) {
-				if (recv_data[0] == combinedWords[i]) {
-					charsCorrect++;				
+				if (recv_data[0] == combinedWords[i]) {				
 					printf("Match!\n");
-					board[i + 1] = combinedWords[i];
+					if (!guessedAlready(guessesMadeStr, recv_data[0])) {
+						board[i + 1] = combinedWords[i];
+						charsCorrect++;
+					}
 				}
 			}
-			guessesNo--;
+
+			if (!guessedAlready(guessesMadeStr, recv_data[0])) {
+				guessesNo--;
+				strcat(guessesMadeStr, recv_data);
+			} else {
+				statusMessage = "Guess has already been made\n";
+				if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
+					perror("send");
+				}
+			}			
 		
 		} else {
 			statusMessage = "Not a valid input. Please enter a lower-case letter\n";
@@ -408,6 +424,16 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	}
 }
 
+int guessedAlready(char* guessedString, int charTwo) {
+	int guessWasMade = 0;
+	int j;
+	for (j = 0; j < strlen(guessedString); j++) {
+		if (guessedString[j] == charTwo) {
+			guessWasMade = 1;
+		}
+	}
+	return guessWasMade;
+}
 
 void initilizeStruct(int line, char* player){
 	u[line].player = player;
