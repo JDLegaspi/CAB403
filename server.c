@@ -15,10 +15,12 @@
 	#define MAXDATASIZE 1024
 
 char *readFile();
+int authenticate(int* new_fd, char* send_data, char* recv_data);
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
 void printLeaderboard(int* new_fd);
 void initilizeStruct(int line, char* player);
+int showMainMenu(int* new_fd, char* recv_data);
 void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
 int guessedAlready(char* guessedString, int charTwo);
 
@@ -36,7 +38,6 @@ int main (int argc, char* argv[]) {
     struct sockaddr_in their_addr;
     socklen_t sin_size;
     int bytes_received;
-    char* name;
     int userID;
 
     char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
@@ -88,109 +89,33 @@ int main (int argc, char* argv[]) {
 		if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
             perror("accept");
             continue;
-        }
-
-		char *message;
-		int userLine;
-		//authenticate block
-		int auth = 1;
-		while(auth) {
-
-			memset(recv_data, 0, sizeof(recv_data));
-
-			message = "enter username: ";
-			if (send(new_fd, message, strlen(message) ,0) == -1) {
-				perror("send");
-				exit(1);
-			}
-			
-			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
-			name = recv_data; //need to grab name but this doesnt work
-			// auth username
-			if ((userLine = authenticateUser(recv_data)) == 0) {
-				message = "username does not match\n";
-				if (send(new_fd, message, strlen(message) ,0) == -1) {
-					perror("send");
-				}
-			} else {
+		}
 				
-				memset(recv_data, 0, sizeof(recv_data));
-				message = "enter password: ";
-				if (send(new_fd, message, strlen(message) ,0) == -1) {
-					perror("send");
-					exit(1);
-				}
-
-				bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
-
-				if (authenticatePass(recv_data, userLine) == 1) {
-					userID = userLine - 1;	 
-					initilizeStruct(userID, name);		
-					auth = 0;
-				} else {
-					message = "password does not match\n";
-					if (send(new_fd, message, strlen(message) ,0) == -1) {
-						perror("send");
-					}
-				}
-			}
-		}
-
-		//main menu block 
-		int choice = 0;
-		while (choice == 0) {
-			message = "\n=======WASSUPPP======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
-			if (send(new_fd, message, strlen(message) ,0) == -1) {
-				perror("send");
-			}
-
-			memset(recv_data, 0, sizeof(recv_data));
-
-			bytes_received = recv(new_fd, recv_data, sizeof(recv_data), 0);
-
-			if (strcmp(recv_data, "1") == 0) {
-				choice = 1;
-			} else if (strcmp(recv_data, "2") == 0) {
-				choice = 2;
-			} else if (strcmp(recv_data, "3") == 0) {
-				choice = 3;
-			} else {
-				message = "Please enter 1, 2, or 3 as a selection.\n";
-				if (send(new_fd, message, strlen(message) ,0) == -1) {
-					perror("send");
-				}
-			}
-		}
-
+		//authenticate, main menu
+		userID = authenticate(&new_fd, send_data, recv_data);
+		int choice;
+		choice = showMainMenu(&new_fd, recv_data);
+		
 		if (choice == 1) {
 			//game block
 
 			char *test = readFile();
-			//test[strlen(test)] = '\0';
-			//printf("%s", test); //Testing readFile
-		
 			// //Code to separate words
 			char *p;
 			char *wordOne;
 			char *wordTwo;
 		
-			 p = strtok(test, ",");
+			p = strtok(test, ",");
+	
+			if (p) {
+				wordOne = p;		
+			}
 		
-			 if (p) {
-			 	wordOne = p;		
-			 }
-			
-			 p = strtok(NULL, ",");
-			
-			 if (p) {
+			p = strtok(NULL, ",");
+		
+			if (p) {
 				wordTwo = p;
-
-			} // won't work in the game function otherwise segmentation dump	
-
-			//printf("%s, %s\n", wordOne, wordTwo);
-		
-			//wordOne = "hello";
-			//wordTwo = "sir";
+			}
 
 			game(wordOne, wordTwo, &new_fd, send_data, recv_data, userID); //testing game function
 
@@ -202,8 +127,6 @@ int main (int argc, char* argv[]) {
 		}
 
     }
-
-    //variable = readFile();
 	
     return 0;
 }
@@ -232,6 +155,58 @@ char* readFile(){
 
 	}
 	//had return guessWord down here but returns different value
+}
+
+int authenticate(int* new_fd, char* send_data, char* recv_data) {
+	char* message;
+	char* name;
+	int bytes_received, userLine, userID;
+
+	int auth = 1;
+	while(auth) {
+
+		memset(recv_data, 0, sizeof(recv_data));
+
+		message = "enter username: ";
+		if (send(*new_fd, message, strlen(message) ,0) == -1) {
+			perror("send");
+			exit(1);
+		}
+		
+		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+		name = recv_data; //need to grab name but this doesnt work
+		// auth username
+		if ((userLine = authenticateUser(recv_data)) == 0) {
+			message = "username does not match\n";
+			if (send(*new_fd, message, strlen(message) ,0) == -1) {
+				perror("send");
+			}
+		} else {
+			
+			memset(recv_data, 0, sizeof(recv_data));
+			message = "enter password: ";
+			if (send(*new_fd, message, strlen(message) ,0) == -1) {
+				perror("send");
+				exit(1);
+			}
+
+			bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+
+			if (authenticatePass(recv_data, userLine) == 1) {
+				userID = userLine - 1;	 
+				initilizeStruct(userID, name);		
+				auth = 0;
+			} else {
+				message = "password does not match\n";
+				if (send(*new_fd, message, strlen(message) ,0) == -1) {
+					perror("send");
+				}
+			}
+		}
+	}
+
+	return userID;
+
 }
 
 int authenticateUser(char* input) {
@@ -298,6 +273,36 @@ int authenticatePass(char* input, int lineNo) {
 	}
 
 	return passMatch;
+
+}
+
+int showMainMenu(int* new_fd, char* recv_data) {
+	char* message;
+	int bytes_received;
+	
+	while (1) {
+		message = "\n=======WELCOME======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
+		if (send(*new_fd, message, strlen(message) ,0) == -1) {
+			perror("send");
+		}
+
+		memset(recv_data, 0, sizeof(recv_data));
+
+		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+
+		if (strcmp(recv_data, "1") == 0) {
+			return 1;
+		} else if (strcmp(recv_data, "2") == 0) {
+			return 2;
+		} else if (strcmp(recv_data, "3") == 0) {
+			return 3;
+		} else {
+			message = "Please enter 1, 2, or 3 as a selection.\n";
+			if (send(*new_fd, message, strlen(message) ,0) == -1) {
+				perror("send");
+			}
+		}
+	}
 
 }
 
@@ -407,7 +412,12 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	//do stuff based on game status
 	if (gameStatus == 3) {
 		u[userID].gamesWon += 1;
-		u[userID].gamesPlayed++;		
+		u[userID].gamesPlayed++;
+
+		if (send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1) {
+			perror("send");
+		}
+
 		statusMessage = "Yay!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
