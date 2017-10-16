@@ -20,9 +20,9 @@ char *readFile();
 int authenticate(int* new_fd, char* send_data, char* recv_data);
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
-void printLeaderboard(int* new_fd);
+void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID);
 void initilizeStruct(int line, char* player);
-int showMainMenu(int* new_fd, char* recv_data);
+void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID);
 void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
 int guessedAlready(char* guessedString, int charTwo);
 
@@ -111,36 +111,15 @@ int main (int argc, char* argv[]) {
 
 void run(int* new_fd) {
 	int userID;
-	char *p;
-	char *wordOne;
-	char *wordTwo;
+	
 
 	char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 	
 	//authenticate, main menu
 	userID = authenticate(new_fd, send_data, recv_data);
-	int choice;
-	choice = showMainMenu(new_fd, recv_data);
+	showMainMenu(new_fd, send_data, recv_data, userID);
 	
-	if (choice == 1) {
-		
-		//game block
-		char *test = readFile();
-		
-		// //Code to separate words	
-		p = strtok(test, ",");
-		if (p) { wordOne = p; }
-		p = strtok(NULL, ",");
-		if (p) { wordTwo = p; }
-
-		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID); //testing game function
 	
-	} else if (choice == 2) {
-		//leaderboard block
-		printLeaderboard(new_fd);
-	} else {
-		//gracefully exit
-	}
 }
 
 char* readFile(){
@@ -288,10 +267,14 @@ int authenticatePass(char* input, int lineNo) {
 
 }
 
-int showMainMenu(int* new_fd, char* recv_data) {
+void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID) {
 	char* message;
+	int choice = 0;
+	char *p;
+	char *wordOne;
+	char *wordTwo;
 	
-	while (1) {
+	while (choice == 0) {
 		message = "\n=======WELCOME======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
 		if (send(*new_fd, message, strlen(message) ,0) == -1) {
 			perror("send");
@@ -302,17 +285,37 @@ int showMainMenu(int* new_fd, char* recv_data) {
 		recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 		if (strcmp(recv_data, "1") == 0) {
-			return 1;
+			choice = 1;
 		} else if (strcmp(recv_data, "2") == 0) {
-			return 2;
+			choice = 2;
 		} else if (strcmp(recv_data, "3") == 0) {
-			return 3;
+			choice = 3;
 		} else {
 			message = "Please enter 1, 2, or 3 as a selection.\n";
 			if (send(*new_fd, message, strlen(message) ,0) == -1) {
 				perror("send");
 			}
 		}
+	}
+	
+	if (choice == 1) {
+		
+		//game block
+		char *test = readFile();
+		
+		// //Code to separate words	
+		p = strtok(test, ",");
+		if (p) { wordOne = p; }
+		p = strtok(NULL, ",");
+		if (p) { wordTwo = p; }
+
+		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID); //testing game function
+	
+	} else if (choice == 2) {
+		//leaderboard block
+		printLeaderboard(new_fd, send_data, recv_data, userID);
+	} else {
+		//gracefully exit
 	}
 
 }
@@ -432,6 +435,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		statusMessage = "Yay!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
+		
 		}
 		//printLeaderboard(new_fd);//using to test leaderboard
 			
@@ -442,7 +446,9 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
 		}
+		
 	}
+	showMainMenu(new_fd, send_data, recv_data, userID);
 }
 
 int guessedAlready(char* guessedString, int charTwo) {
@@ -463,7 +469,7 @@ void initilizeStruct(int line, char* player){
 }
 
 
-void printLeaderboard(int* new_fd) {
+void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID) {
 	struct scoreBoard test[12];
 	struct scoreBoard temp;
 	int swapped = 0;
@@ -528,7 +534,7 @@ void printLeaderboard(int* new_fd) {
 
 		}
 	}
-	
+	showMainMenu(new_fd, send_data, recv_data, userID);
 }
 
 
