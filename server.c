@@ -9,11 +9,13 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <pthread.h>
 
 	#define BACKLOG 10
 	#define BUF_SIZE ( 256 )
 	#define MAXDATASIZE 1024
 
+void* run(int* new_fd, char* send_data, char* recv_data);
 char *readFile();
 int authenticate(int* new_fd, char* send_data, char* recv_data);
 int authenticateUser(char* input);
@@ -85,50 +87,54 @@ int main (int argc, char* argv[]) {
     while(1) {
         
         sin_size = sizeof(struct sockaddr_in);
-		
 		if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
             perror("accept");
             continue;
 		}
-				
-		//authenticate, main menu
-		userID = authenticate(&new_fd, send_data, recv_data);
-		int choice;
-		choice = showMainMenu(&new_fd, recv_data);
-		
-		if (choice == 1) {
-			//game block
-
-			char *test = readFile();
-			// //Code to separate words
-			char *p;
-			char *wordOne;
-			char *wordTwo;
-		
-			p = strtok(test, ",");
-	
-			if (p) {
-				wordOne = p;		
-			}
-		
-			p = strtok(NULL, ",");
-		
-			if (p) {
-				wordTwo = p;
-			}
-
-			game(wordOne, wordTwo, &new_fd, send_data, recv_data, userID); //testing game function
-
-		} else if (choice == 2) {
-			//leaderboard block
-			printLeaderboard(&new_fd);
-		} else {
-			//gracefully exit
-		}
+		run(&new_fd , send_data, recv_data);
 
     }
 	
     return 0;
+}
+
+void* run(int* new_fd, char* send_data, char* recv_data) {
+	int userID;
+	
+	//authenticate, main menu
+	userID = authenticate(new_fd, send_data, recv_data);
+	int choice;
+	choice = showMainMenu(new_fd, recv_data);
+	
+	if (choice == 1) {
+		//game block
+
+		char *test = readFile();
+		// //Code to separate words
+		char *p;
+		char *wordOne;
+		char *wordTwo;
+	
+		p = strtok(test, ",");
+
+		if (p) {
+			wordOne = p;		
+		}
+	
+		p = strtok(NULL, ",");
+	
+		if (p) {
+			wordTwo = p;
+		}
+
+		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID); //testing game function
+	
+	} else if (choice == 2) {
+		//leaderboard block
+		printLeaderboard(new_fd);
+	} else {
+		//gracefully exit
+	}
 }
 
 char* readFile(){
