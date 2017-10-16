@@ -12,10 +12,10 @@
 #include <pthread.h>
 
 	#define BACKLOG 10
-	#define BUF_SIZE ( 256 )
 	#define MAXDATASIZE 1024
+	#define MAXTHREADS 5
 
-void* run(int* new_fd, char* send_data, char* recv_data);
+void run(int* new_fd);
 char *readFile();
 int authenticate(int* new_fd, char* send_data, char* recv_data);
 int authenticateUser(char* input);
@@ -32,22 +32,21 @@ struct scoreBoard {
 	int gamesPlayed;
 }u[12];
 
+struct thread_values {
+	int new_fd;
+};
+
 int main (int argc, char* argv[]) {
 
     srand(time(NULL));
-    int sockfd, new_fd;
+    int sockfd, i = 0;
     struct sockaddr_in my_addr;
     struct sockaddr_in their_addr;
-    socklen_t sin_size;
-    int bytes_received;
-    int userID;
-
-    char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
+	socklen_t sin_size;
 
     //get port number
     if (argc != 2) {
         fprintf(stderr, "Port number has been set to default: 12345\n"); //configure so we have a default port
-		//exit(1);
 		
 		//generate the end point
 		my_addr.sin_family = AF_INET; //host byte order
@@ -63,6 +62,7 @@ int main (int argc, char* argv[]) {
 
 	}
 
+	//create socket
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         exit(1);
@@ -82,24 +82,40 @@ int main (int argc, char* argv[]) {
 
 	printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 	
-	
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_t tids[MAXTHREADS];
+
 	//main block
     while(1) {
-        
-        sin_size = sizeof(struct sockaddr_in);
-		if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
-            perror("accept");
-            continue;
-		}
-		run(&new_fd , send_data, recv_data);
+		
+		struct thread_values thread_args[MAXTHREADS];
 
+		for (i = 0; i < MAXTHREADS; i++) {
+			sin_size = sizeof(struct sockaddr_in);
+			if ((thread_args[i].new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
+				perror("accept");
+				continue;
+			} else {
+
+				if (pthread_create(&tids[i], NULL, (void *(*)(void*))run, &thread_args[i]) == -1) {
+					printf("ERROR creating thread");
+					return EXIT_FAILURE;
+				}
+			}
+		}
     }
 	
     return 0;
 }
 
-void* run(int* new_fd, char* send_data, char* recv_data) {
+void run(int* new_fd) {
 	int userID;
+	char *p;
+	char *wordOne;
+	char *wordTwo;
+
+	char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 	
 	//authenticate, main menu
 	userID = authenticate(new_fd, send_data, recv_data);
@@ -107,25 +123,15 @@ void* run(int* new_fd, char* send_data, char* recv_data) {
 	choice = showMainMenu(new_fd, recv_data);
 	
 	if (choice == 1) {
+		
 		//game block
-
 		char *test = readFile();
-		// //Code to separate words
-		char *p;
-		char *wordOne;
-		char *wordTwo;
-	
+		
+		// //Code to separate words	
 		p = strtok(test, ",");
-
-		if (p) {
-			wordOne = p;		
-		}
-	
+		if (p) { wordOne = p; }
 		p = strtok(NULL, ",");
-	
-		if (p) {
-			wordTwo = p;
-		}
+		if (p) { wordTwo = p; }
 
 		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID); //testing game function
 	
@@ -166,7 +172,7 @@ char* readFile(){
 int authenticate(int* new_fd, char* send_data, char* recv_data) {
 	char* message;
 	char* name;
-	int bytes_received, userLine, userID;
+	int userLine, userID;
 
 	int auth = 1;
 	while(auth) {
@@ -179,7 +185,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 			exit(1);
 		}
 		
-		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+		recv(*new_fd, recv_data, sizeof(recv_data), 0);
 		name = recv_data; //need to grab name but this doesnt work
 		// auth username
 		if ((userLine = authenticateUser(recv_data)) == 0) {
@@ -196,7 +202,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 				exit(1);
 			}
 
-			bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+			recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 			if (authenticatePass(recv_data, userLine) == 1) {
 				userID = userLine - 1;	 
@@ -284,7 +290,6 @@ int authenticatePass(char* input, int lineNo) {
 
 int showMainMenu(int* new_fd, char* recv_data) {
 	char* message;
-	int bytes_received;
 	
 	while (1) {
 		message = "\n=======WELCOME======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
@@ -294,7 +299,7 @@ int showMainMenu(int* new_fd, char* recv_data) {
 
 		memset(recv_data, 0, sizeof(recv_data));
 
-		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+		recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 		if (strcmp(recv_data, "1") == 0) {
 			return 1;
@@ -317,7 +322,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	char* board;
 	char* combinedWords;
 	char* statusMessage;
-	int bytes_received, i, j, totalChars, charsCorrect;
+	int i, j, totalChars, charsCorrect;
 	char message[1048];
 	char guessesMadeStr[100];
 	guessesMadeStr[0] = '\0';
@@ -372,7 +377,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		}
 
 		memset(recv_data, 0, sizeof(recv_data));
-		bytes_received = recv(*new_fd, recv_data, sizeof(recv_data), 0);
+		recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 		printf("Guess made: %s\n", recv_data);
 
