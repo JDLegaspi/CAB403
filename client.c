@@ -54,9 +54,13 @@ int main (int argc, char* argv[]) {
     while(1) {
         bytes_received = recv(sockfd, recv_data, sizeof(recv_data), 0);
         recv_data[bytes_received] = '\0';
-    
+    	if(strcmp(recv_data, "EXITNOW") == 0){
+		printf("Thanks for playing :D Come back soon.\n");		
+		exit(0);
+	}
+	
         printf("%s", recv_data);
-
+	
         scanf("%s", send_data);
         
         if(send(sockfd, send_data, strlen(send_data), 0) == -1) {

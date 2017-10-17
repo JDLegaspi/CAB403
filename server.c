@@ -152,6 +152,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 	char* message;
 	char* name;
 	int userLine, userID;
+	
 
 	int auth = 1;
 	while(auth) {
@@ -165,8 +166,8 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 		}
 		
 		recv(*new_fd, recv_data, sizeof(recv_data), 0);
-		name = recv_data; //need to grab name but this doesnt work
-		// auth username
+		name = malloc(strlen(recv_data)+1);//allocate memory for name, deallocate???
+		memcpy(name, recv_data, strlen(recv_data)+1);//store username in name		
 		if ((userLine = authenticateUser(recv_data)) == 0) {
 			message = "username does not match\n";
 			if (send(*new_fd, message, strlen(message) ,0) == -1) {
@@ -195,8 +196,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 			}
 		}
 	}
-
-	return userID;
+	return userID; //do we want to return userID or userLine here
 
 }
 
@@ -222,9 +222,8 @@ int authenticateUser(char* input) {
 	}
 
 	lineNumber = 0;
-
-	fclose(file);
-
+	
+	fclose(file);	
 	return lineMatch;
 }
 
@@ -275,7 +274,7 @@ void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID) {
 	char *wordTwo;
 	
 	while (choice == 0) {
-		message = "\n=======WELCOME======= \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
+		message = "\n===========HANGMAN=========== \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
 		if (send(*new_fd, message, strlen(message) ,0) == -1) {
 			perror("send");
 		}
@@ -315,7 +314,10 @@ void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID) {
 		//leaderboard block
 		printLeaderboard(new_fd, send_data, recv_data, userID);
 	} else {
-		//gracefully exit
+		message = "EXITNOW";
+		if (send(*new_fd, message, strlen(message) ,0) == -1) {
+			perror("send");
+		}
 	}
 
 }
@@ -475,7 +477,7 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
 	int swapped = 0;
 	int unsorted = 1;
 	char message[1048];
-	
+	int count = 0;
 		
 	for(int k = 0; k < 12; k++){
 		test[k] = u[k];
@@ -526,13 +528,19 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
  
 	for( int l = 0; l < 4; l++){
 		if(test[l].gamesPlayed > 0){
-		snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================\n", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+		snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
 		
 		if (send(*new_fd, message, strlen(message), 0) == -1) {
 			perror("send");
 		}
 
-		}
+		}else{count++;}
+	}
+	if(count == 4){
+		title = "\n==========================================================\nThere is no one that has played a game be the first one. \n==========================================================";
+	if (send(*new_fd, title, strlen(title), 0) == -1){
+				perror("send");
+	}
 	}
 	showMainMenu(new_fd, send_data, recv_data, userID);
 }
