@@ -185,10 +185,12 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 			recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 			if (authenticatePass(recv_data, userLine) == 1) {
+				printf("\nUser %s attempted to log in and was successful\n", name);
 				userID = userLine - 1;	 
 				initilizeStruct(userID, name);		
 				auth = 0;
 			} else {
+				printf("\nUser %s attempted to log in and was unsuccessful\n", name);
 				message = "password does not match\n";
 				if (send(*new_fd, message, strlen(message) ,0) == -1) {
 					perror("send");
@@ -251,7 +253,7 @@ int authenticatePass(char* input, int lineNo) {
 				substring = &line[strlen(line) - inputLength];
 			}
 
-			printf("entered: %s	password: %s\n", input, substring);
+			//printf("entered: %s	password: %s\n", input, substring);
 
 			if (strcmp(substring, input) == 0) {
 				passMatch = 1;
@@ -466,8 +468,8 @@ int guessedAlready(char* guessedString, int charTwo) {
 
 void initilizeStruct(int line, char* player){
 	u[line].player = player;
-	u[line].gamesPlayed = 0;
-	u[line].gamesWon = 0;
+	u[line].gamesPlayed;
+	u[line].gamesWon;
 }
 
 
@@ -488,7 +490,7 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
 	for( int j = 0; j < 3; j++){
 		
 		//order by wins, then percentage of wins, the alphabetically
-		if(test[j].gamesWon < test[j+1].gamesWon){
+		if(test[j].gamesWon > test[j+1].gamesWon){
 			struct scoreBoard temp = test[j];
 			test[j] = test[j+1];
 			test[j+1] = temp;
@@ -498,14 +500,14 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
 		else if(test[j].gamesWon == test[j+1].gamesWon){
 			float test1 = (float)test[j].gamesWon/(float)test[j].gamesPlayed;
 			float test2 = (float)test[j+1].gamesWon/(float)test[j+1].gamesPlayed;
-			if(test1 < test2){
+			if(test1 > test2){
 			temp = test[j];
 			test[j] = test[j+1];
 			test[j+1] = temp;
 			swapped = 1;
 		}
 		else if(test1 == test2){
-			if(strcmp(test[j].player, test[j+1].player)>0){
+			if(strcmp(test[j].player, test[j+1].player)<0){
 			temp = test[j];
 			test[j] = test[j+1];
 			test[j+1] = temp;
