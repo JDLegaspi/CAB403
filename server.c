@@ -185,12 +185,12 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 			recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
 			if (authenticatePass(recv_data, userLine) == 1) {
-				printf("\nUser %s attempted to log in and was successful\n", name);
+				printf("User %s attempted to log in and was successful\n", name);
 				userID = userLine - 1;	 
 				initilizeStruct(userID, name);		
 				auth = 0;
 			} else {
-				printf("\nUser %s attempted to log in and was unsuccessful\n", name);
+				printf("User %s attempted to log in and was unsuccessful\n", name);
 				message = "password does not match\n";
 				if (send(*new_fd, message, strlen(message) ,0) == -1) {
 					perror("send");
@@ -353,7 +353,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 	strcat(combinedWords, " ");
 	strcat(combinedWords, wordTwo);
 
-	printf("%s\n", combinedWords);
+	printf("Game started: %s", combinedWords);
 
 	//create guesses UI
 	board[0] = '\0';
@@ -436,22 +436,23 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 			perror("send");
 		}
 
-		statusMessage = "Yay!\n";
+		statusMessage = "Yay! You beat the Hangman!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
 		
+		
 		}
-		//printLeaderboard(new_fd);//using to test leaderboard
 			
 	}
 	if (gameStatus == 2) {
 		u[userID].gamesPlayed++;		
-		statusMessage = "You Lose!\n";
+		statusMessage = "You Lose! The Hangman caught you!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
 			perror("send");
 		}
 		
 	}
+	printf("Game Over: %s", combinedWords);
 	showMainMenu(new_fd, send_data, recv_data, userID);
 }
 
@@ -539,7 +540,7 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
 		}else{count++;}
 	}
 	if(count == 4){
-		title = "\n==========================================================\nThere is no one that has played a game be the first one. \n==========================================================";
+		title = "\nBe the first one on the leaderboard. Play a game now!!!";
 	if (send(*new_fd, title, strlen(title), 0) == -1){
 				perror("send");
 	}
