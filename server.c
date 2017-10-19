@@ -14,7 +14,7 @@
 	#define BACKLOG 10
 	#define MAXDATASIZE 1024
 	#define MAXTHREADS 5
-	#defin NUMUSERS 12
+	#define NUMUSERS 12
 
 void run(int* new_fd);
 char *readFile();
@@ -566,8 +566,8 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID,
 	
 	//Print only users that have played a game
 	for( int l = 0; l < NUMUSERS; l++){
-		if(test[l].gamesPlayed > 0){
-			snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+		if(b[l].gamesPlayed > 0){
+			snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================", b[l].player, b[l].gamesWon, b[l].gamesPlayed);
 		
 			if (send(*new_fd, message, strlen(message), 0) == -1) {
 				perror("send");
