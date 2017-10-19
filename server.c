@@ -14,6 +14,7 @@
 	#define BACKLOG 10
 	#define MAXDATASIZE 1024
 	#define MAXTHREADS 5
+	#defin NUMUSERS 12
 
 void run(int* new_fd);
 char *readFile();
@@ -33,7 +34,7 @@ struct scoreBoard {
 	char *player;
 	int gamesWon;
 	int gamesPlayed;
-}u[12];
+}u[NUMUSERS];
 
 //create input values for thread function
 struct thread_values {
@@ -149,8 +150,9 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 		}
 		
 		recv(*new_fd, recv_data, sizeof(recv_data), 0);
-		name = malloc(strlen(recv_data)+1);//allocate memory for name, deallocate???
-		memcpy(name, recv_data, strlen(recv_data)+1);//store username in name		
+		//create memory space for the name char pointer
+		name = malloc(strlen(recv_data)+1);
+		memcpy(name, recv_data, strlen(recv_data)+1);		
 		
 		//return the line that the username is seen on
 		if ((userLine = authenticateUser(recv_data)) == 0) {
@@ -184,7 +186,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 			}
 		}
 	}
-	return userID; //do we want to return userID or userLine here
+	return userID; 
 
 }
 
@@ -297,10 +299,10 @@ void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID, pth
 	if (choice == 1) {
 		
 		//game block
-		char *test = readFile();
+		char *combinedWords = readFile();
 		
 		//Code to separate words	
-		p = strtok(test, ",");
+		p = strtok(combinedWords, ",");
 		if (p) { wordOne = p; }
 		p = strtok(NULL, ",");
 		if (p) { wordTwo = p; }
@@ -323,7 +325,6 @@ void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID, pth
 			printf("There was an error canelling thread\n");
 		}
 	}
-
 }
 
 //read string from random line of hangman_text.txt
@@ -335,9 +336,8 @@ char* readFile(){
 	char line[288];
 	char *guessWord;
 	lineNumber = rand() % 289;
-
+	//return a pointer of the randomly selected words
 	while(fgets(line, sizeof(line), file) != NULL){
-
 		if(lineNumber == count){
 			guessWord = line;
 			count++;
@@ -460,26 +460,23 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		if (charsCorrect == totalChars) {
 			gameStatus = 3;
 		}
-
 	}
 
-	//do stuff based on game status
+	//Game Win
 	if (gameStatus == 3) {
 		u[userID].gamesWon += 1;
 		u[userID].gamesPlayed++;
-
+		
 		if (send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1) {
 			perror("send");
 		}
-
 		statusMessage = "Yay! You beat the Hangman!\n";
 		if (send(*new_fd, statusMessage, strlen(statusMessage), 0) == -1) {
-			perror("send");
-		
-		
+			perror("send");		
 		}
 			
 	}
+	//Game Lose
 	if (gameStatus == 2) {
 		u[userID].gamesPlayed++;		
 		statusMessage = "You Lose! The Hangman caught you!\n";
@@ -489,6 +486,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		
 	}
 	printf("Game Over: %s", combinedWords);
+	//Display Main Menu
 	showMainMenu(new_fd, send_data, recv_data, userID, id);
 }
 
@@ -504,6 +502,7 @@ int guessedAlready(char* guessedString, int charTwo) {
 	return guessWasMade;
 }
 
+//initilise the structure based on the user's textfile line and name
 void initilizeStruct(int line, char* player){
 	u[line].player = player;
 	u[line].gamesPlayed;
@@ -512,52 +511,51 @@ void initilizeStruct(int line, char* player){
 
 //code to print leaderboard
 void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id) {
-	struct scoreBoard test[12];
+	struct scoreBoard b[NUMUSERS];
 	struct scoreBoard temp;
 	int swapped = 0;
 	int unsorted = 1;
 	char message[1048];
 	int count = 0;
-		
-	for(int k = 0; k < 12; k++){
-		test[k] = u[k];
+	//Put all user structs into another group of structs so variables are consistant to the user
+	for(int k = 0; k < NUMUSERS; k++){
+		b[k] = u[k];
 	}		
 
 	while(unsorted){
-	swapped = 0;
-	for( int j = 0; j < 3; j++){
+		swapped = 0;
+		for( int j = 0; j < 3; j++){		
+			//order by wins, then percentage of wins, the alphabetically
+			if(b[j].gamesWon > b[j+1].gamesWon){
+				struct scoreBoard temp = b[j];
+				b[j] = b[j+1];
+				b[j+1] = temp;
+				swapped = 1;	
+			}
 		
-		//order by wins, then percentage of wins, the alphabetically
-		if(test[j].gamesWon > test[j+1].gamesWon){
-			struct scoreBoard temp = test[j];
-			test[j] = test[j+1];
-			test[j+1] = temp;
-			swapped = 1;	
+			else if(b[j].gamesWon == b[j+1].gamesWon){
+				float diff = (float)b[j].gamesWon/(float)b[j].gamesPlayed;
+				float diff2 = (float)b[j+1].gamesWon/(float)b[j+1].gamesPlayed;
+				if(diff > diff2){
+					temp = b[j];
+					b[j] = b[j+1];
+					b[j+1] = temp;
+					swapped = 1;
+				}
+				else if(diff == diff2){
+					if(strcmp(b[j].player, b[j+1].player)<0){
+					temp = b[j];
+					b[j] = b[j+1];
+					b[j+1] = temp;
+					swapped = 1;
+					}						
+				}
+		
+			}	
+			if(swapped == 0){
+				unsorted = 0;		
+			}		
 		}
-		
-		else if(test[j].gamesWon == test[j+1].gamesWon){
-			float test1 = (float)test[j].gamesWon/(float)test[j].gamesPlayed;
-			float test2 = (float)test[j+1].gamesWon/(float)test[j+1].gamesPlayed;
-			if(test1 > test2){
-			temp = test[j];
-			test[j] = test[j+1];
-			test[j+1] = temp;
-			swapped = 1;
-		}
-		else if(test1 == test2){
-			if(strcmp(test[j].player, test[j+1].player)<0){
-			temp = test[j];
-			test[j] = test[j+1];
-			test[j+1] = temp;
-			swapped = 1;
-		}						
-	}
-		
-	}	
-		if(swapped == 0){
-		unsorted = 0;		
-		}		
-	}
 
 	}
 	
@@ -565,22 +563,23 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID,
 	if (send(*new_fd, title, strlen(title), 0) == -1){
 				perror("send");
 	}
- 
-	for( int l = 0; l < 4; l++){
+	
+	//Print only users that have played a game
+	for( int l = 0; l < NUMUSERS; l++){
 		if(test[l].gamesPlayed > 0){
-		snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
+			snprintf( message, sizeof message, "\n Player - %s\n Number of games won - %d \n Number of games played - %d \n=============================", test[l].player, test[l].gamesWon, test[l].gamesPlayed);
 		
-		if (send(*new_fd, message, strlen(message), 0) == -1) {
-			perror("send");
-		}
-
+			if (send(*new_fd, message, strlen(message), 0) == -1) {
+				perror("send");
+			}
 		}else{count++;}
 	}
-	if(count == 4){
+	//Print only if no user has played a game
+	if(count == NUMUSERS){
 		title = "\nBe the first one on the leaderboard. Play a game now!!!";
-	if (send(*new_fd, title, strlen(title), 0) == -1){
-				perror("send");
-	}
+		if (send(*new_fd, title, strlen(title), 0) == -1){
+			perror("send");
+		}
 	}
 	showMainMenu(new_fd, send_data, recv_data, userID, id);
 }
