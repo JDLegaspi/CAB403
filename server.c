@@ -20,11 +20,14 @@ char *readFile();
 int authenticate(int* new_fd, char* send_data, char* recv_data);
 int authenticateUser(char* input);
 int authenticatePass(char* input, int lineNo);
-void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID);
+void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id);
 void initilizeStruct(int line, char* player);
-void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID);
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID);
+void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id);
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id);
 int guessedAlready(char* guessedString, int charTwo);
+
+//thread pool array
+pthread_t tids[MAXTHREADS];
 
 struct scoreBoard {
 	char *player;
@@ -32,6 +35,7 @@ struct scoreBoard {
 	int gamesPlayed;
 }u[12];
 
+//create input values for thread function
 struct thread_values {
 	int new_fd;
 };
@@ -81,23 +85,26 @@ int main (int argc, char* argv[]) {
     }
 
 	printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
-	
+
+	//create default thread attributes
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_t tids[MAXTHREADS];
 
 	//main block
     while(1) {
 		
+		//create array of values for each thread
 		struct thread_values thread_args[MAXTHREADS];
 
 		for (i = 0; i < MAXTHREADS; i++) {
+			//wait for connection
 			sin_size = sizeof(struct sockaddr_in);
 			if ((thread_args[i].new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
 				perror("accept");
 				continue;
 			} else {
 
+				//create a new thread of connection is made
 				if (pthread_create(&tids[i], NULL, (void *(*)(void*))run, &thread_args[i]) == -1) {
 					printf("ERROR creating thread");
 					return EXIT_FAILURE;
@@ -109,45 +116,21 @@ int main (int argc, char* argv[]) {
     return 0;
 }
 
+//main function
 void run(int* new_fd) {
 	int userID;
-	
+	//store current thread id
+	pthread_t id = pthread_self();
 
+	//store send and receive data here
 	char send_data[MAXDATASIZE], recv_data[MAXDATASIZE];
 	
 	//authenticate, main menu
 	userID = authenticate(new_fd, send_data, recv_data);
-	showMainMenu(new_fd, send_data, recv_data, userID);
-	
-	
+	showMainMenu(new_fd, send_data, recv_data, userID, id);
 }
 
-char* readFile(){
-	int lineNumber;// = 285; //change to random
-	static const char filename[] = "hangman_text.txt";
-	FILE *file = fopen(filename, "r");
-	int count = 1;
-	char line[288];
-	char *guessWord;
-	lineNumber = rand() % 289;
-
-	while(fgets(line, sizeof(line), file) != NULL){
-
-		
-		if(lineNumber == count){
-			guessWord = line;
-			count++;
-			fclose(file);
-			return guessWord;			
-		}
-		else{
-			count++;		
-		}
-
-	}
-	//had return guessWord down here but returns different value
-}
-
+//code to authenticate users
 int authenticate(int* new_fd, char* send_data, char* recv_data) {
 	char* message;
 	char* name;
@@ -168,6 +151,8 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 		recv(*new_fd, recv_data, sizeof(recv_data), 0);
 		name = malloc(strlen(recv_data)+1);//allocate memory for name, deallocate???
 		memcpy(name, recv_data, strlen(recv_data)+1);//store username in name		
+		
+		//return the line that the username is seen on
 		if ((userLine = authenticateUser(recv_data)) == 0) {
 			message = "username does not match\n";
 			if (send(*new_fd, message, strlen(message) ,0) == -1) {
@@ -184,6 +169,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 
 			recv(*new_fd, recv_data, sizeof(recv_data), 0);
 
+			//get password from that user line, check if same
 			if (authenticatePass(recv_data, userLine) == 1) {
 				printf("User %s attempted to log in and was successful\n", name);
 				userID = userLine - 1;	 
@@ -202,6 +188,7 @@ int authenticate(int* new_fd, char* send_data, char* recv_data) {
 
 }
 
+//check if entered username exists, return the line number it's found on or 0
 int authenticateUser(char* input) {
 	static const char* filename = "authentication.txt";
 	FILE *file = fopen(filename, "r");
@@ -214,9 +201,12 @@ int authenticateUser(char* input) {
 	char substring[inputLength];
 	static int lineNumber, lineMatch = 0;
 
+	//find matching username
 	while((read = getline(&line, &len, file)) != -1) {
 		strncpy(substring, line, inputLength);
 		substring[inputLength] = '\0';
+		
+		//return username if found
 		if (strcmp(substring, input) == 0) {
 			lineMatch = lineNumber;
 		}
@@ -229,12 +219,12 @@ int authenticateUser(char* input) {
 	return lineMatch;
 }
 
+//get password from the same line as username
 int authenticatePass(char* input, int lineNo) {
 
 	static const char* filename = "authentication.txt";
-	FILE *file = fopen(filename, "r");
+	FILE *file = fopen(filename, "r"); //open file
 
-	//int inputLength = strlen(input);
 	int inputLength = 6;
 	char* substring;
 	int lineNumber, passMatch = 0;
@@ -243,8 +233,10 @@ int authenticatePass(char* input, int lineNo) {
 	size_t len = 0;
 	ssize_t read;
 
+	//keep reading until EOF
 	while((read = getline(&line, &len, file)) != -1) {
 
+		//if line number matches, check password
 		if (lineNumber == lineNo) {	
 			if (line[strlen(line) - 1] == '\n') {
 				substring = &line[strlen(line) - inputLength - 1];
@@ -253,8 +245,7 @@ int authenticatePass(char* input, int lineNo) {
 				substring = &line[strlen(line) - inputLength];
 			}
 
-			//printf("entered: %s	password: %s\n", input, substring);
-
+			//change return value
 			if (strcmp(substring, input) == 0) {
 				passMatch = 1;
 				break;
@@ -264,17 +255,20 @@ int authenticatePass(char* input, int lineNo) {
 		}
 	}
 
+	//return 1 or 0
 	return passMatch;
 
 }
 
-void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID) {
+//main menu code
+void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id) {
 	char* message;
 	int choice = 0;
 	char *p;
 	char *wordOne;
 	char *wordTwo;
 	
+	//repeat until there is a valid choice
 	while (choice == 0) {
 		message = "\n===========HANGMAN=========== \n Please choose an option:\n 1) Play Hangman \n 2) See Scoreboard \n 3) Exit \n\nSelection: ";
 		if (send(*new_fd, message, strlen(message) ,0) == -1) {
@@ -299,32 +293,66 @@ void showMainMenu(int* new_fd, char* send_data, char* recv_data, int userID) {
 		}
 	}
 	
+	//play game if choice == 1
 	if (choice == 1) {
 		
 		//game block
 		char *test = readFile();
 		
-		// //Code to separate words	
+		//Code to separate words	
 		p = strtok(test, ",");
 		if (p) { wordOne = p; }
 		p = strtok(NULL, ",");
 		if (p) { wordTwo = p; }
 
-		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID); //testing game function
+		game(wordOne, wordTwo, new_fd, send_data, recv_data, userID, id); //testing game function
 	
+	//leaderboard block if choice == 2
 	} else if (choice == 2) {
-		//leaderboard block
-		printLeaderboard(new_fd, send_data, recv_data, userID);
+		printLeaderboard(new_fd, send_data, recv_data, userID, id);
+
+	//send exit signal
 	} else {
 		message = "EXITNOW";
 		if (send(*new_fd, message, strlen(message) ,0) == -1) {
 			perror("send");
 		}
+		
+		//cancel current thread
+		if (pthread_cancel(id) != 0) {
+			printf("There was an error canelling thread\n");
+		}
 	}
 
 }
 
-void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID) {
+//read string from random line of hangman_text.txt
+char* readFile(){
+	int lineNumber;
+	static const char filename[] = "hangman_text.txt";
+	FILE *file = fopen(filename, "r");
+	int count = 1;
+	char line[288];
+	char *guessWord;
+	lineNumber = rand() % 289;
+
+	while(fgets(line, sizeof(line), file) != NULL){
+
+		if(lineNumber == count){
+			guessWord = line;
+			count++;
+			fclose(file);
+			return guessWord;			
+		}
+		else{
+			count++;		
+		}
+
+	}
+}
+
+//game code
+void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id) {
 	
 	char* board;
 	char* combinedWords;
@@ -344,6 +372,8 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		guessesNo = 26;	
 	}
 
+	//board is the string representation of what the user sees, eg: _____ ____
+	//create memory space for board and string of both words
 	board = malloc(wordOneLen + wordTwoLen + 2);
 	combinedWords = malloc(wordOneLen + wordTwoLen + 2);
 
@@ -379,6 +409,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		snprintf(message, sizeof message, "\nGuesses Left: %d\n", guessesNo);
 		guessesMadeMessage = "Guesses Made: ";
 
+		//send UI to client
 		if (send(*new_fd, message, strlen(message), 0) == -1 || send(*new_fd, guessesMadeMessage, strlen(guessesMadeMessage), 0) == -1 || send(*new_fd, guessesMadeStr, strlen(guessesMadeStr), 0) == -1 || send(*new_fd, board, strlen(board), 0) == -1 || send(*new_fd, "\n", 1, 0) == -1 || send(*new_fd, "\nNew Guess: ", 13, 0) == -1) {
 			perror("send");
 		}
@@ -388,8 +419,10 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 
 		printf("Guess made: %s\n", recv_data);
 
+		//ensure input is alpha character and length is 1
 		if (isalpha(recv_data[0]) && strlen(recv_data) == 1) {
 			
+			//check if letter has been used already, if not, see if it matches
 			for (i = 0; i < strlen(combinedWords); i++) {
 				if (recv_data[0] == combinedWords[i]) {				
 					printf("Match!\n");
@@ -400,6 +433,7 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 				}
 			}
 
+			//add char to string of already made guesses
 			if (!guessedAlready(guessesMadeStr, recv_data[0])) {
 				guessesNo--;
 				strcat(guessesMadeStr, recv_data);
@@ -417,10 +451,12 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 			}
 		}
 
+		//check if player ran out of guesses
 		if (guessesNo <= 0) {
 			gameStatus = 2;
-			
 		}
+
+		//check if player won game
 		if (charsCorrect == totalChars) {
 			gameStatus = 3;
 		}
@@ -453,9 +489,10 @@ void game(char* wordOne, char* wordTwo, int* new_fd, char* send_data, char* recv
 		
 	}
 	printf("Game Over: %s", combinedWords);
-	showMainMenu(new_fd, send_data, recv_data, userID);
+	showMainMenu(new_fd, send_data, recv_data, userID, id);
 }
 
+//check if char in included in string 'guessedString'
 int guessedAlready(char* guessedString, int charTwo) {
 	int guessWasMade = 0;
 	int j;
@@ -473,8 +510,8 @@ void initilizeStruct(int line, char* player){
 	u[line].gamesWon;
 }
 
-
-void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID) {
+//code to print leaderboard
+void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID, pthread_t id) {
 	struct scoreBoard test[12];
 	struct scoreBoard temp;
 	int swapped = 0;
@@ -545,7 +582,7 @@ void printLeaderboard(int* new_fd, char* send_data, char* recv_data, int userID)
 				perror("send");
 	}
 	}
-	showMainMenu(new_fd, send_data, recv_data, userID);
+	showMainMenu(new_fd, send_data, recv_data, userID, id);
 }
 
 
