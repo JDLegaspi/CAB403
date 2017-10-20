@@ -13,7 +13,7 @@
 
 	#define BACKLOG 10
 	#define MAXDATASIZE 1024
-	#define MAXTHREADS 5
+	#define MAXTHREADS 10
 	#define NUMUSERS 12
 
 void run(int* new_fd);
@@ -85,7 +85,7 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-	printf("TCP Server waiting for client on port %d\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
+	printf("TCP Server waiting for client\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
 
 	//create default thread attributes
 	pthread_attr_t attr;
@@ -105,7 +105,7 @@ int main (int argc, char* argv[]) {
 				continue;
 			} else {
 
-				//create a new thread of connection is made
+				//create a new thread if connection is made
 				if (pthread_create(&tids[i], NULL, (void *(*)(void*))run, &thread_args[i]) == -1) {
 					printf("ERROR creating thread");
 					return EXIT_FAILURE;
