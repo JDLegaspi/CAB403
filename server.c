@@ -13,7 +13,7 @@
 
 	#define BACKLOG 10
 	#define MAXDATASIZE 1024
-	#define MAXTHREADS 3
+	#define MAXTHREADS 10
 	#define NUMUSERS 12
 
 void run(int* new_fd);
