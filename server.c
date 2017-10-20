@@ -13,7 +13,7 @@
 
 	#define BACKLOG 10
 	#define MAXDATASIZE 1024
-	#define MAXTHREADS 10
+	#define MAXTHREADS 3
 	#define NUMUSERS 12
 
 void run(int* new_fd);
@@ -85,7 +85,7 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-	printf("TCP Server waiting for client\n", htons(my_addr.sin_port)); //configure so it shows actual port number (not working properly)
+	printf("TCP Server waiting for client\n");//, htons(my_addr.sin_port));
 
 	//create default thread attributes
 	pthread_attr_t attr;
@@ -100,6 +100,7 @@ int main (int argc, char* argv[]) {
 		for (i = 0; i < MAXTHREADS; i++) {
 			//wait for connection
 			sin_size = sizeof(struct sockaddr_in);
+
 			if ((thread_args[i].new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
 				perror("accept");
 				continue;
